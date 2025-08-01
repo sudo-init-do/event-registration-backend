@@ -1,0 +1,12 @@
+{
+    "name": "cyberkid/event-registration-backend",
+    "description": "Event registration platform",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "DevObaloluwa",
+            "email": "securedbyoba@gmail.com"
+        }
+    ],
+    "require": {}
+}
