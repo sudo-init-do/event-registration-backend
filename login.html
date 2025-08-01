@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - EventHub</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <a href="index.html" style="text-decoration: none; color: inherit;">
+                    <h2>EventHub</h2>
+                </a>
+            </div>
+            <div class="nav-links">
+                <a href="index.html">Home</a>
+                <a href="events.html">Events</a>
+                <a href="register.html" class="btn-primary">Register</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="page-content">
+        <div class="form-container">
+            <h1>Welcome Back</h1>
+            
+            <div id="alert-container"></div>
+            
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+                
+                <button type="submit" class="btn-primary" style="width: 100%; margin-bottom: 20px;">
+                    Sign In
+                </button>
+            </form>
+            
+            <div class="form-links">
+                <p>Don't have an account? <a href="register.html">Create one here</a></p>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 EventHub. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        // Check if user is already logged in
+        window.addEventListener('load', function() {
+            const user = JSON.parse(localStorage.getItem('user') || 'null');
+            if (user) {
+                window.location.href = 'events.html';
+            }
+        });
+
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const alertContainer = document.getElementById('alert-container');
+            const formData = new FormData(this);
+            
+            const data = {
+                email: formData.get('email'),
+                password: formData.get('password')
+            };
+            
+            try {
+                const response = await fetch('api/login.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    // Store user info in localStorage
+                    localStorage.setItem('user', JSON.stringify(result.user));
+                    
+                    alertContainer.innerHTML = `
+                        <div class="alert alert-success">
+                            ${result.message || 'Login successful!'}
+                        </div>
+                    `;
+                    
+                    // Redirect to events page after 1 second
+                    setTimeout(() => {
+                        window.location.href = 'events.html';
+                    }, 1000);
+                } else {
+                    alertContainer.innerHTML = `
+                        <div class="alert alert-error">
+                            ${result.error || 'Login failed. Please try again.'}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alertContainer.innerHTML = `
+                    <div class="alert alert-error">
+                        Network error. Please check your connection and try again.
+                    </div>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>

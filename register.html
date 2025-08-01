@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - EventHub</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <a href="index.html" style="text-decoration: none; color: inherit;">
+                    <h2>EventHub</h2>
+                </a>
+            </div>
+            <div class="nav-links">
+                <a href="index.html">Home</a>
+                <a href="events.html">Events</a>
+                <a href="login.html" class="btn-secondary">Login</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="page-content">
+        <div class="form-container">
+            <h1>Create Account</h1>
+            
+            <div id="alert-container"></div>
+            
+            <form id="registerForm">
+                <div class="form-group">
+                    <label for="full_name">Full Name *</label>
+                    <input type="text" id="full_name" name="full_name" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="email">Email Address *</label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="phone">Phone Number</label>
+                    <input type="tel" id="phone" name="phone">
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Password *</label>
+                    <input type="password" id="password" name="password" required minlength="6">
+                </div>
+                
+                <button type="submit" class="btn-primary" style="width: 100%; margin-bottom: 20px;">
+                    Create Account
+                </button>
+            </form>
+            
+            <div class="form-links">
+                <p>Already have an account? <a href="login.html">Sign in here</a></p>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 EventHub. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        document.getElementById('registerForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const alertContainer = document.getElementById('alert-container');
+            const formData = new FormData(this);
+            
+            const data = {
+                full_name: formData.get('full_name'),
+                email: formData.get('email'),
+                phone: formData.get('phone'),
+                password: formData.get('password')
+            };
+            
+            try {
+                const response = await fetch('api/register.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    alertContainer.innerHTML = `
+                        <div class="alert alert-success">
+                            ${result.message || 'Account created successfully!'}
+                        </div>
+                    `;
+                    this.reset();
+                    
+                    // Redirect to login page after 2 seconds
+                    setTimeout(() => {
+                        window.location.href = 'login.html';
+                    }, 2000);
+                } else {
+                    alertContainer.innerHTML = `
+                        <div class="alert alert-error">
+                            ${result.error || 'Registration failed. Please try again.'}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alertContainer.innerHTML = `
+                    <div class="alert alert-error">
+                        Network error. Please check your connection and try again.
+                    </div>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>

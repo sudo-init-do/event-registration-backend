@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Events - EventHub</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <a href="index.html" style="text-decoration: none; color: inherit;">
+                    <h2>EventHub</h2>
+                </a>
+            </div>
+            <div class="nav-links" id="navLinks">
+                <a href="index.html">Home</a>
+                <a href="events.html">Events</a>
+                <!-- Dynamic navigation will be inserted here -->
+            </div>
+        </div>
+    </nav>
+
+    <div class="page-header">
+        <div class="container">
+            <h1>Upcoming Events</h1>
+            <p>Discover and register for amazing events</p>
+        </div>
+    </div>
+
+    <main class="page-content">
+        <div class="container">
+            <!-- User info section (shown when logged in) -->
+            <div id="userInfo" class="user-info" style="display: none;">
+                <div class="user-details">
+                    <h3 id="userName">Welcome!</h3>
+                    <p id="userEmail"></p>
+                </div>
+                <div>
+                    <a href="my-registrations.html" class="btn-secondary">My Registrations</a>
+                    <button onclick="logout()" class="btn-danger">Logout</button>
+                </div>
+            </div>
+            
+            <div id="alert-container"></div>
+            
+            <!-- Loading state -->
+            <div id="loading" class="loading">
+                <div class="spinner"></div>
+                <p>Loading events...</p>
+            </div>
+            
+            <!-- Events grid -->
+            <div id="eventsGrid" class="events-grid" style="display: none;">
+                <!-- Events will be dynamically loaded here -->
+            </div>
+            
+            <!-- Empty state -->
+            <div id="emptyState" style="display: none; text-align: center; padding: 60px 20px;">
+                <h3>No events found</h3>
+                <p>Check back later for new events!</p>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 EventHub. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        let currentUser = null;
+
+        // Check authentication status
+        function checkAuth() {
+            const user = JSON.parse(localStorage.getItem('user') || 'null');
+            const navLinks = document.getElementById('navLinks');
+            
+            if (user) {
+                currentUser = user;
+                document.getElementById('userInfo').style.display = 'flex';
+                document.getElementById('userName').textContent = `Welcome, ${user.full_name}!`;
+                document.getElementById('userEmail').textContent = user.email;
+                
+                // Update navigation for logged-in user
+                navLinks.innerHTML = `
+                    <a href="index.html">Home</a>
+                    <a href="events.html">Events</a>
+                    <a href="my-registrations.html">My Registrations</a>
+                    <button onclick="logout()" class="btn-danger">Logout</button>
+                `;
+            } else {
+                // Update navigation for guest user
+                navLinks.innerHTML = `
+                    <a href="index.html">Home</a>
+                    <a href="events.html">Events</a>
+                    <a href="login.html" class="btn-secondary">Login</a>
+                    <a href="register.html" class="btn-primary">Register</a>
+                `;
+            }
+        }
+
+        // Logout function
+        function logout() {
+            localStorage.removeItem('user');
+            window.location.href = 'index.html';
+        }
+
+        // Load events
+        async function loadEvents() {
+            const loading = document.getElementById('loading');
+            const eventsGrid = document.getElementById('eventsGrid');
+            const emptyState = document.getElementById('emptyState');
+            const alertContainer = document.getElementById('alert-container');
+            
+            try {
+                const response = await fetch('api/list_events.php');
+                const result = await response.json();
+                
+                loading.style.display = 'none';
+                
+                if (response.ok && result.events && result.events.length > 0) {
+                    eventsGrid.style.display = 'grid';
+                    eventsGrid.innerHTML = result.events.map(event => createEventCard(event)).join('');
+                } else {
+                    emptyState.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Error loading events:', error);
+                loading.style.display = 'none';
+                alertContainer.innerHTML = `
+                    <div class="alert alert-error">
+                        Failed to load events. Please refresh the page to try again.
+                    </div>
+                `;
+            }
+        }
+
+        // Create event card HTML
+        function createEventCard(event) {
+            const eventDate = new Date(event.event_date);
+            const formattedDate = eventDate.toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+            const formattedTime = eventDate.toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+
+            return `
+                <div class="event-card">
+                    <h3>${event.title}</h3>
+                    <div class="event-meta">
+                        <span>📅 ${formattedDate}</span>
+                        <span>🕒 ${formattedTime}</span>
+                        ${event.location ? `<span>📍 ${event.location}</span>` : ''}
+                        <span>👤 Created by ${event.created_by || 'Unknown'}</span>
+                    </div>
+                    ${event.description ? `<div class="event-description">${event.description}</div>` : ''}
+                    ${currentUser ? 
+                        `<button onclick="registerForEvent(${event.id})" class="btn-primary" style="width: 100%;">
+                            Register for Event
+                        </button>` :
+                        `<div style="text-align: center; padding: 10px; background: #f8f9fa; border-radius: 6px;">
+                            <a href="login.html" class="btn-primary">Login to Register</a>
+                        </div>`
+                    }
+                </div>
+            `;
+        }
+
+        // Register for event
+        async function registerForEvent(eventId) {
+            if (!currentUser) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            const alertContainer = document.getElementById('alert-container');
+            
+            try {
+                const response = await fetch('api/register_event.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        user_id: currentUser.id,
+                        event_id: eventId
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    alertContainer.innerHTML = `
+                        <div class="alert alert-success">
+                            ${result.message || 'Successfully registered for the event!'}
+                        </div>
+                    `;
+                    
+                    // Scroll to top to show the message
+                    window.scrollTo(0, 0);
+                } else {
+                    alertContainer.innerHTML = `
+                        <div class="alert alert-error">
+                            ${result.error || 'Registration failed. Please try again.'}
+                        </div>
+                    `;
+                    window.scrollTo(0, 0);
+                }
+            } catch (error) {
+                console.error('Error registering for event:', error);
+                alertContainer.innerHTML = `
+                    <div class="alert alert-error">
+                        Network error. Please check your connection and try again.
+                    </div>
+                `;
+                window.scrollTo(0, 0);
+            }
+        }
+
+        // Initialize page
+        window.addEventListener('load', function() {
+            checkAuth();
+            loadEvents();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Registrations - EventHub</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <a href="index.html" style="text-decoration: none; color: inherit;">
+                    <h2>EventHub</h2>
+                </a>
+            </div>
+            <div class="nav-links">
+                <a href="index.html">Home</a>
+                <a href="events.html">Events</a>
+                <a href="my-registrations.html">My Registrations</a>
+                <button onclick="logout()" class="btn-danger">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="page-header">
+        <div class="container">
+            <h1>My Registrations</h1>
+            <p>Events you've registered for</p>
+        </div>
+    </div>
+
+    <main class="page-content">
+        <div class="container">
+            <!-- User info section -->
+            <div id="userInfo" class="user-info">
+                <div class="user-details">
+                    <h3 id="userName">Loading...</h3>
+                    <p id="userEmail"></p>
+                </div>
+                <div>
+                    <a href="events.html" class="btn-primary">Browse More Events</a>
+                </div>
+            </div>
+            
+            <div id="alert-container"></div>
+            
+            <!-- Loading state -->
+            <div id="loading" class="loading">
+                <div class="spinner"></div>
+                <p>Loading your registrations...</p>
+            </div>
+            
+            <!-- Registrations grid -->
+            <div id="registrationsGrid" class="events-grid" style="display: none;">
+                <!-- Registrations will be dynamically loaded here -->
+            </div>
+            
+            <!-- Empty state -->
+            <div id="emptyState" style="display: none; text-align: center; padding: 60px 20px;">
+                <h3>No registrations yet</h3>
+                <p>You haven't registered for any events yet.</p>
+                <a href="events.html" class="btn-primary">Browse Events</a>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 EventHub. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        let currentUser = null;
+
+        // Check authentication and redirect if not logged in
+        function checkAuth() {
+            const user = JSON.parse(localStorage.getItem('user') || 'null');
+            
+            if (!user) {
+                window.location.href = 'login.html';
+                return false;
+            }
+            
+            currentUser = user;
+            document.getElementById('userName').textContent = `${user.full_name}`;
+            document.getElementById('userEmail').textContent = user.email;
+            return true;
+        }
+
+        // Logout function
+        function logout() {
+            localStorage.removeItem('user');
+            window.location.href = 'index.html';
+        }
+
+        // Load user registrations
+        async function loadRegistrations() {
+            if (!currentUser) return;
+
+            const loading = document.getElementById('loading');
+            const registrationsGrid = document.getElementById('registrationsGrid');
+            const emptyState = document.getElementById('emptyState');
+            const alertContainer = document.getElementById('alert-container');
+            
+            try {
+                const response = await fetch('api/my_registrations.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        user_id: currentUser.id
+                    })
+                });
+                
+                const result = await response.json();
+                
+                loading.style.display = 'none';
+                
+                if (response.ok && result.registrations && result.registrations.length > 0) {
+                    registrationsGrid.style.display = 'grid';
+                    registrationsGrid.innerHTML = result.registrations.map(registration => createRegistrationCard(registration)).join('');
+                } else if (response.ok && result.registrations && result.registrations.length === 0) {
+                    emptyState.style.display = 'block';
+                } else {
+                    alertContainer.innerHTML = `
+                        <div class="alert alert-error">
+                            ${result.error || 'Failed to load registrations.'}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading registrations:', error);
+                loading.style.display = 'none';
+                alertContainer.innerHTML = `
+                    <div class="alert alert-error">
+                        Failed to load registrations. Please refresh the page to try again.
+                    </div>
+                `;
+            }
+        }
+
+        // Create registration card HTML
+        function createRegistrationCard(registration) {
+            const eventDate = new Date(registration.event_date);
+            const registeredDate = new Date(registration.registered_at);
+            const now = new Date();
+            
+            const formattedEventDate = eventDate.toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+            const formattedEventTime = eventDate.toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            const formattedRegisteredDate = registeredDate.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+
+            const isPastEvent = eventDate < now;
+            const statusClass = isPastEvent ? 'alert-info' : 'alert-success';
+            const statusText = isPastEvent ? 'Past Event' : 'Upcoming';
+
+            return `
+                <div class="event-card">
+                    <div class="alert ${statusClass}" style="margin-bottom: 15px; padding: 8px 12px; font-size: 12px; font-weight: 600;">
+                        ${statusText}
+                    </div>
+                    <h3>${registration.title}</h3>
+                    <div class="event-meta">
+                        <span>📅 ${formattedEventDate}</span>
+                        <span>🕒 ${formattedEventTime}</span>
+                        ${registration.location ? `<span>📍 ${registration.location}</span>` : ''}
+                        <span>✅ Registered on ${formattedRegisteredDate}</span>
+                    </div>
+                    ${registration.description ? `<div class="event-description">${registration.description}</div>` : ''}
+                    
+                    <div style="text-align: center; margin-top: 20px;">
+                        ${isPastEvent ? 
+                            `<span style="color: #666; font-style: italic;">Event has ended</span>` :
+                            `<span style="color: #1E88E5; font-weight: 500;">✅ You're registered!</span>`
+                        }
+                    </div>
+                </div>
+            `;
+        }
+
+        // Initialize page
+        window.addEventListener('load', function() {
+            if (checkAuth()) {
+                loadRegistrations();
+            }
+        });
+    </script>
+</body>
+</html>
